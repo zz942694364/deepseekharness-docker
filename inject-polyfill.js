@@ -61,50 +61,17 @@ const RANDOM_UUID_POLYFILL = `<script>
 // moment it returns, before cordis notifies any dependent fiber. Same
 // technique as dsh-web-startup-auth.
 const IS_LOOPBACK_OVERRIDE = `<script>
-/* Present remote browsers as loopback so settings/credentials become available */
+/* Present remote browsers as loopback so settings/credentials become available.
+ * 0.1.5-rc.1: the loader-wrapper approach broke with the lazy module system.
+ * This version pre-defines the embedded-carrier transport global instead:
+ * connection install reads __DSH_TRANSPORT__.ownsHost as the loopback signal,
+ * while rpc/stream fall back to page fetch + default carriers (identical to
+ * an unmodified page). One official field, no loader surgery. */
 (function(){
-  function installIsLoopbackOverride() {
-    var loader = window.__ModuleLoader__
-    if (!loader || loader.__isLoopbackHooked) return false
-    // The HTML-installed facade starts in "queue" mode and only becomes
-    // "live" once ClientModuleSystem.create() replaces load(); wrapping the
-    // queue-mode load would be discarded by the replacement.
-    if (loader.mode !== 'live') return false
-    loader.__isLoopbackHooked = true
-    var origLoad = loader.load.bind(loader)
-    loader.load = function (handoff) {
-      var factory = handoff && handoff.factory
-      if (typeof factory === 'function') {
-        handoff.factory = function (require) {
-          var exports = factory(require)
-          var apply = exports && exports.apply
-          if (typeof apply === 'function') {
-            exports.apply = function (ctx) {
-              var result = apply(ctx)
-              try {
-                var connection = ctx && ctx.get && ctx.get('connection')
-                if (connection) {
-                  Object.defineProperty(connection, 'isLoopback', {
-                    configurable: true,
-                    get: function () { return true }
-                  })
-                }
-              } catch (error) {}
-              return result
-            }
-          }
-          return exports
-        }
-      }
-      return origLoad(handoff)
-    }
-    return true
+  var t = globalThis.__DSH_TRANSPORT__
+  if (t === undefined || t.ownsHost !== true) {
+    globalThis.__DSH_TRANSPORT__ = Object.assign(Object.create(null), t, { ownsHost: true })
   }
-  // Keep retrying: the boot entry may load asynchronously after this script.
-  function tryInstallIsLoopbackOverride() {
-    if (!installIsLoopbackOverride()) setTimeout(tryInstallIsLoopbackOverride, 0)
-  }
-  tryInstallIsLoopbackOverride()
 })()
 </script>
 `;
