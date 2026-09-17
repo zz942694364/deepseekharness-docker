@@ -13,6 +13,7 @@ services:
       - DSH_HOME=/dsh-home
       - DSH_TRUSTED_HOSTS=        # Lucky 外网域名，空格分隔，如 dsh.example.com；纯内网留空
       - TZ=Asia/Shanghai
+      - DSH_TELEMETRY_MODE=DISABLED
     env_file:
       - ./secrets.env             # 内容一行: DEEPSEEK_API_KEY=sk-xxx（勿提交仓库）
     security_opt:
