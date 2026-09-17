@@ -1,0 +1,72 @@
+name: build
+
+# 每天 UTC 20:00（北京 04:00）检查 npm 上 @deepseek-ai/dsh 的 latest 版本：
+# Docker Hub 没有这个版本 tag 才构建推送（新版本号 tag + latest tag）。
+# 手动触发用 workflow_dispatch（可指定 force 强制重建）。
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '强制重建（忽略已存在 tag）'
+        type: boolean
+        default: false
+
+env:
+  IMAGE: zz942694364/deepseek-harness
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 查询 npm latest 版本
+        id: ver
+        run: |
+          VERSION=$(curl -sf --retry 3 https://registry.npmjs.org/@deepseek-ai%2Fdsh | jq -r '."dist-tags".latest')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "npm 查询失败，跳过本次"; exit 0
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "npm latest: $VERSION"
+
+      - name: 检查 Docker Hub 是否已有该版本
+        id: hub
+        run: |
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://hub.docker.com/v2/repositories/${IMAGE}/tags/${{ steps.ver.outputs.version }}")
+          echo "hub http $CODE"
+          if [ "$CODE" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "版本已存在，无需构建"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.hub.outputs.exists != 'true' || inputs.force == true
+        uses: actions/checkout@v4
+
+      - name: Login Docker Hub
+        if: steps.hub.outputs.exists != 'true' || inputs.force == true
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Buildx
+        if: steps.hub.outputs.exists != 'true' || inputs.force == true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push
+        if: steps.hub.outputs.exists != 'true' || inputs.force == true
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: DSH_VERSION=${{ steps.ver.outputs.version }}
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.ver.outputs.version }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
