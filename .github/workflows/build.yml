@@ -36,7 +36,7 @@ jobs:
           CODE=$(curl -s -o /dev/null -w '%{http_code}' \
             "https://hub.docker.com/v2/repositories/${IMAGE}/tags/${{ steps.ver.outputs.version }}")
           echo "hub http $CODE"
-          if [ "$CODE" = "200" ]; then
+          if [ "$CODE" = "200" ] || [ -z "${{ steps.ver.outputs.version }}" ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
             echo "版本已存在，无需构建"
           else
