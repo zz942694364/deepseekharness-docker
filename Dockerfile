@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY inject-polyfill.js /inject-polyfill.js
 COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # dsh + pnpm 一起装：pnpm 是 `dsh plugin` 子命令的硬依赖（CLI 转发执行）。
 # --allow-scripts 放行原生依赖 postinstall（npm>=10 默认拦截，node-pty/koffi
