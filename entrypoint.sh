@@ -13,4 +13,4 @@ done
 
 echo "[dsh] starting $(dsh --version 2>&1 || echo '?')"
 # exec：dsh 成为 PID 1，正确接收 SIGTERM 优雅退出（5 秒 drain）
-exec dsh web --no-open --port 3080 $TRUSTED_ARGS --patch /config/host.patch.yml
+exec dsh web --patch /config/host.patch.yml --no-open --port 3080 $TRUSTED_ARGS
