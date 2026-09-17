@@ -1,0 +1,21 @@
+services:
+  dsh:
+    image: zz942694364/deepseek-harness:latest
+    container_name: dsh
+    restart: unless-stopped
+    init: true                    # 信号转发+僵尸进程回收
+    ports:
+      - "3088:3080"               # 内网直访 http://NAS_IP:3088；外网经 Lucky 反代至此
+    volumes:
+      - ./home:/dsh-home          # DSH_HOME：会话历史/凭据/已装插件（升级不受影响）
+      - ./config:/config:ro       # host.patch.yml（只读）
+    environment:
+      - DSH_HOME=/dsh-home
+      - DSH_TRUSTED_HOSTS=        # Lucky 外网域名，空格分隔，如 dsh.example.com；纯内网留空
+      - TZ=Asia/Shanghai
+    env_file:
+      - ./secrets.env             # 内容一行: DEEPSEEK_API_KEY=sk-xxx（勿提交仓库）
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    shm_size: "1gb"               # 会话内跑浏览器类任务时 Chromium renderer 需要
