@@ -11,3 +11,6 @@
   config:
     host: '0.0.0.0'
     port: 3080
+- id: session-log-deepseek
+  config:
+    enabled: false
